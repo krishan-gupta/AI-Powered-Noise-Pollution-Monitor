@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sound Measuring Portal</title>
+    <meta
+      name="description"
+      content="Real-time sound level monitoring with visual speedometer gauges and professional categorization"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css" />
+
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              border: "hsl(var(--border))",
+              input: "hsl(var(--input))",
+              ring: "hsl(var(--ring))",
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              primary: {
+                DEFAULT: "hsl(var(--primary))",
+                foreground: "hsl(var(--primary-foreground))",
+              },
+              secondary: {
+                DEFAULT: "hsl(var(--secondary))",
+                foreground: "hsl(var(--secondary-foreground))",
+              },
+              destructive: {
+                DEFAULT: "hsl(var(--destructive))",
+                foreground: "hsl(var(--destructive-foreground))",
+              },
+              muted: {
+                DEFAULT: "hsl(var(--muted))",
+                foreground: "hsl(var(--muted-foreground))",
+              },
+              accent: {
+                DEFAULT: "hsl(var(--accent))",
+                foreground: "hsl(var(--accent-foreground))",
+              },
+              popover: {
+                DEFAULT: "hsl(var(--popover))",
+                foreground: "hsl(var(--popover-foreground))",
+              },
+              card: {
+                DEFAULT: "hsl(var(--card))",
+                foreground: "hsl(var(--card-foreground))",
+              },
+              good: "hsl(var(--good))",
+              loud: "hsl(var(--loud))",
+              "too-loud": "hsl(var(--too-loud))",
+              extreme: "hsl(var(--extreme))",
+              gauge: {
+                bg: "hsl(var(--gauge-bg))",
+                text: "hsl(var(--gauge-text))",
+                border: "hsl(var(--gauge-border))",
+              },
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-background text-foreground transition-colors duration-300">
+    <div class="min-h-screen">
+      <div class="container mx-auto px-4 py-8">
+        <div class="flex flex-col items-center gap-8">
+          <div class="flex flex-col items-center gap-4 w-full">
+            <div class="flex items-center justify-between w-full max-w-5xl">
+              <div class="w-12"></div>
+              <h1
+                class="text-4xl md:text-5xl font-bold text-foreground text-center"
+              >
+                Sound Measuring Portal
+              </h1>
+              <button
+                id="theme-toggle"
+                aria-label="Toggle theme"
+                class="rounded-full transition-all duration-300 hover:scale-110 p-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+              >
+                <i data-lucide="moon" class="h-5 w-5"></i>
+                <i data-lucide="sun" class="h-5 w-5 hidden"></i>
+              </button>
+            </div>
+            <p class="text-muted-foreground text-center max-w-2xl">
+              Real-time sound level monitoring with visual feedback and
+              categorization
+            </p>
+          </div>
+
+          <div class="flex gap-4">
+            <button
+              id="demo-toggle"
+              class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            >
+              <i data-lucide="play" class="h-4 w-4"></i>
+              <span>Start Demo</span>
+            </button>
+          </div>
+
+          <div
+            class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 w-full max-w-5xl"
+          >
+            <div class="flex flex-col items-center gap-4">
+              <h3 class="text-lg font-semibold text-foreground">
+                Left Channel
+              </h3>
+              <div
+                class="rounded-2xl bg-gradient-to-br from-gauge-bg to-card border-2 border-gauge-border p-8 shadow-2xl transition-all duration-300 hover:shadow-primary/20 hover:scale-[1.02]"
+              >
+                <canvas id="speedometer-left" width="300" height="300"></canvas>
+              </div>
+            </div>
+            <div class="flex flex-col items-center gap-4">
+              <h3 class="text-lg font-semibold text-foreground">
+                Right Channel
+              </h3>
+              <div
+                class="rounded-2xl bg-gradient-to-br from-gauge-bg to-card border-2 border-gauge-border p-8 shadow-2xl transition-all duration-300 hover:shadow-primary/20 hover:scale-[1.02]"
+              >
+                <canvas
+                  id="speedometer-right"
+                  width="300"
+                  height="300"
+                ></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-3xl"
+          >
+            <div
+              class="flex items-center gap-2 p-3 rounded-lg bg-card border border-border"
+            >
+              <div class="w-4 h-4 rounded-full bg-good"></div>
+              <div class="text-sm">
+                <div class="font-semibold text-foreground">0-50 dB</div>
+                <div class="text-muted-foreground">Good</div>
+              </div>
+            </div>
+            <div
+              class="flex items-center gap-2 p-3 rounded-lg bg-card border border-border"
+            >
+              <div class="w-4 h-4 rounded-full bg-loud"></div>
+              <div class="text-sm">
+                <div class="font-semibold text-foreground">50-70 dB</div>
+                <div class="text-muted-foreground">Loud</div>
+              </div>
+            </div>
+            <div
+              class="flex items-center gap-2 p-3 rounded-lg bg-card border border-border"
+            >
+              <div class="w-4 h-4 rounded-full bg-too-loud"></div>
+              <div class="text-sm">
+                <div class="font-semibold text-foreground">70-100 dB</div>
+                <div class="text-muted-foreground">Too Loud</div>
+              </div>
+            </div>
+            <div
+              class="flex items-center gap-2 p-3 rounded-lg bg-card border border-border"
+            >
+              <div class="w-4 h-4 rounded-full bg-extreme"></div>
+              <div class="text-sm">
+                <div class="font-semibold text-foreground">100-130 dB</div>
+                <div class="text-muted-foreground">Extreme</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
