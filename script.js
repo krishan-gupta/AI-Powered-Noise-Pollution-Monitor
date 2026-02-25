@@ -171,13 +171,14 @@ themeToggle.addEventListener("click", () => {
 });
 
 // --- 4. Live Data Listener (Real-Time) ---
+// This function replaces the demo interval
 onValue(noiseRef, (snapshot) => {
   const data = snapshot.val();
   if (data) {
-    // Total Noise (Left) always updates
+    // Total Noise (Left) updates with every change
     totalNoiseGauge.setValue(data.db || 0);
 
-    // Car Horn (Right) only updates if is_horn is true
+    // Car Horn (Right) only moves if is_horn is true
     if (data.is_horn === true) {
       carHornGauge.setValue(data.db);
     } else {
