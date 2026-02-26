@@ -5,22 +5,23 @@ import {
   onValue,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- 1. Firebase Configuration ---
+// --- 1. NEW Firebase Configuration (Singapore Project) ---
 const firebaseConfig = {
-  apiKey: "AIzaSyAUtOg3W96YKi_z-A4PuSlKJKexdG-VmPM",
-  authDomain: "noise-monitor-f6724.firebaseapp.com",
-  databaseURL: "https://noise-monitor-f6724-default-rtdb.firebaseio.com",
-  projectId: "noise-monitor-f6724",
-  storageBucket: "noise-monitor-f6724.firebasestorage.app",
-  messagingSenderId: "549659852376",
-  appId: "1:549659852376:web:ee4c0df7c920b7c8ffd42d",
-  measurementId: "G-P10NF03LGE",
+  apiKey: "AIzaSyDUuwgY7-M7QUiP7lnSXC0QRZd8TtXOfKo",
+  authDomain: "vit-noise-monitor-pro.firebaseapp.com",
+  databaseURL:
+    "https://vit-noise-monitor-pro-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "vit-noise-monitor-pro",
+  storageBucket: "vit-noise-monitor-pro.firebasestorage.app",
+  messagingSenderId: "59273261046",
+  appId: "1:59273261046:web:482f8cb91a5ed449cbe1d7",
+  measurementId: "G-N1KTSFQBB4",
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const noiseRef = ref(db, "live_data");
+const noiseRef = ref(db, "live_data"); // Path matches your ESP32 code
 
 // --- 2. Speedometer Class Definition ---
 class Speedometer {
@@ -170,8 +171,7 @@ themeToggle.addEventListener("click", () => {
   setAppTheme(isDark ? "light" : "dark");
 });
 
-// --- 4. Live Data Listener (Real-Time) ---
-// This function replaces the demo interval
+// --- 4. Live Data Listener (Real-Time Singapore Sync) ---
 onValue(noiseRef, (snapshot) => {
   const data = snapshot.val();
   if (data) {
