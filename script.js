@@ -4,8 +4,10 @@ import {
   ref,
   onValue,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
+// Remove the old 'import' line and use this instead:
+import "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
 
+// The library will now be available globally as 'emailjs'
 // --- 1. Firebase Configuration ---
 const firebaseConfig = {
   apiKey: "AIzaSyDUuwgY7-M7QUiP7lnSXC0QRZd8TtXOfKo",
