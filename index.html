@@ -110,12 +110,12 @@
 
             <div class="flex items-center gap-2">
               <i data-lucide="clock" class="h-5 w-5 text-primary"></i>
-              <label for="timeWindow" class="font-medium"
+              <label for="timeWindow" class="font-medium text-sm md:text-base"
                 >Data Averaging Period:</label
               >
               <select
                 id="timeWindow"
-                class="bg-background border border-input rounded-md px-4 py-2 focus:ring-2 focus:ring-primary outline-none cursor-pointer text-sm"
+                class="bg-background border border-input rounded-md px-4 py-2 outline-none cursor-pointer text-sm"
               >
                 <option value="30">30 Seconds</option>
                 <option value="60">1 Minute</option>
@@ -128,7 +128,7 @@
               id="ai-status"
               class="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground transition-all duration-300"
             >
-              <i data-lucide="alert-triangle" class="h-4 w-4"></i>
+              <i data-lucide="megaphone" id="horn-icon" class="h-4 w-4"></i>
               <span class="text-sm font-bold uppercase tracking-wider"
                 >No Horn Detected</span
               >
