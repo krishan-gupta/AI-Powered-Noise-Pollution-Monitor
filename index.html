@@ -9,7 +9,6 @@
       content="Real-time sound level monitoring with visual speedometer gauges and professional categorization"
     />
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="/style.css" />
 
@@ -81,27 +80,44 @@
               </h1>
               <button
                 id="theme-toggle"
-                aria-label="Toggle theme"
-                class="rounded-full transition-all duration-300 hover:scale-110 p-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                class="rounded-full transition-all duration-300 hover:scale-110 p-2 border border-input bg-background hover:bg-accent"
               >
                 <i data-lucide="moon" class="h-5 w-5"></i>
                 <i data-lucide="sun" class="h-5 w-5 hidden"></i>
               </button>
             </div>
             <p class="text-muted-foreground text-center max-w-2xl">
-              Real-time sound level monitoring with visual feedback and
-              categorization
+              Real-time monitoring using Optimized Edge AI (3KB Tensor Arena)
             </p>
           </div>
 
-          <div class="flex gap-4">
-            <button
-              id="demo-toggle"
-              class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+          <div
+            class="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-md"
+          >
+            <div class="flex items-center gap-2">
+              <i data-lucide="clock" class="h-5 w-5 text-primary"></i>
+              <label for="timeWindow" class="font-medium"
+                >Data Averaging Period:</label
+              >
+            </div>
+            <select
+              id="timeWindow"
+              class="bg-background border border-input rounded-md px-4 py-2 focus:ring-2 focus:ring-primary outline-none cursor-pointer"
             >
-              <i data-lucide="play" class="h-4 w-4"></i>
-              <span>Start Demo</span>
-            </button>
+              <option value="30">30 Seconds</option>
+              <option value="60">1 Minute</option>
+              <option value="120">2 Minutes</option>
+              <option value="300">5 Minutes</option>
+            </select>
+            <div
+              id="ai-status"
+              class="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground transition-all duration-300"
+            >
+              <i data-lucide="alert-triangle" class="h-4 w-4"></i>
+              <span class="text-sm font-bold uppercase tracking-wider"
+                >No Horn Detected</span
+              >
+            </div>
           </div>
 
           <div
@@ -109,26 +125,61 @@
           >
             <div class="flex flex-col items-center gap-4">
               <h3 class="text-lg font-semibold text-foreground">
-                Left Channel
+                Live Decibel Level
               </h3>
               <div
-                class="rounded-2xl bg-gradient-to-br from-gauge-bg to-card border-2 border-gauge-border p-8 shadow-2xl transition-all duration-300 hover:shadow-primary/20 hover:scale-[1.02]"
+                class="rounded-2xl bg-gradient-to-br from-gauge-bg to-card border-2 border-gauge-border p-8 shadow-2xl transition-all duration-300 hover:scale-[1.02]"
               >
                 <canvas id="speedometer-left" width="300" height="300"></canvas>
               </div>
             </div>
-            <div class="flex flex-col items-center gap-4">
+
+            <div class="flex flex-col items-center gap-4 w-full">
               <h3 class="text-lg font-semibold text-foreground">
-                Right Channel
+                Analytics Summary
               </h3>
               <div
-                class="rounded-2xl bg-gradient-to-br from-gauge-bg to-card border-2 border-gauge-border p-8 shadow-2xl transition-all duration-300 hover:shadow-primary/20 hover:scale-[1.02]"
+                class="w-full bg-card border-2 border-border rounded-2xl p-6 grid grid-cols-1 gap-6 shadow-xl h-full justify-center content-center"
               >
-                <canvas
-                  id="speedometer-right"
-                  width="300"
-                  height="300"
-                ></canvas>
+                <div
+                  class="text-center p-4 rounded-lg bg-primary/10 border border-primary/20"
+                >
+                  <div
+                    class="text-muted-foreground text-xs uppercase font-bold mb-1"
+                  >
+                    Average Level
+                  </div>
+                  <div class="text-4xl font-black text-primary">
+                    <span id="avgDb">0.0</span>
+                    <small class="text-lg font-normal">dB</small>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div
+                    class="text-center p-3 rounded-lg bg-extreme/10 border border-extreme/20"
+                  >
+                    <div
+                      class="text-muted-foreground text-[10px] uppercase font-bold"
+                    >
+                      Peak High
+                    </div>
+                    <div class="text-xl font-bold text-extreme">
+                      <span id="maxDb">0.0</span> dB
+                    </div>
+                  </div>
+                  <div
+                    class="text-center p-3 rounded-lg bg-good/10 border border-good/20"
+                  >
+                    <div
+                      class="text-muted-foreground text-[10px] uppercase font-bold"
+                    >
+                      Peak Low
+                    </div>
+                    <div class="text-xl font-bold text-good">
+                      <span id="minDb">0.0</span> dB
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -141,7 +192,7 @@
             >
               <div class="w-4 h-4 rounded-full bg-good"></div>
               <div class="text-sm">
-                <div class="font-semibold text-foreground">0-50 dB</div>
+                <div class="font-semibold">0-50 dB</div>
                 <div class="text-muted-foreground">Good</div>
               </div>
             </div>
@@ -150,7 +201,7 @@
             >
               <div class="w-4 h-4 rounded-full bg-loud"></div>
               <div class="text-sm">
-                <div class="font-semibold text-foreground">50-70 dB</div>
+                <div class="font-semibold">50-70 dB</div>
                 <div class="text-muted-foreground">Loud</div>
               </div>
             </div>
@@ -159,7 +210,7 @@
             >
               <div class="w-4 h-4 rounded-full bg-too-loud"></div>
               <div class="text-sm">
-                <div class="font-semibold text-foreground">70-100 dB</div>
+                <div class="font-semibold">70-100 dB</div>
                 <div class="text-muted-foreground">Too Loud</div>
               </div>
             </div>
@@ -168,7 +219,7 @@
             >
               <div class="w-4 h-4 rounded-full bg-extreme"></div>
               <div class="text-sm">
-                <div class="font-semibold text-foreground">100-130 dB</div>
+                <div class="font-semibold">100+ dB</div>
                 <div class="text-muted-foreground">Extreme</div>
               </div>
             </div>
@@ -178,6 +229,5 @@
     </div>
 
     <script type="module" src="script.js"></script>
-    >
   </body>
 </html>

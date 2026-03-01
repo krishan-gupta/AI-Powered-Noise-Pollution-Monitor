@@ -5,7 +5,7 @@ import {
   onValue,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- 1. NEW Firebase Configuration (Singapore Project) ---
+// --- 1. Firebase Configuration (Singapore Project) ---
 const firebaseConfig = {
   apiKey: "AIzaSyDUuwgY7-M7QUiP7lnSXC0QRZd8TtXOfKo",
   authDomain: "vit-noise-monitor-pro.firebaseapp.com",
@@ -18,12 +18,14 @@ const firebaseConfig = {
   measurementId: "G-N1KTSFQBB4",
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const noiseRef = ref(db, "live_data"); // Path matches your ESP32 code
+const noiseRef = ref(db, "live_data");
 
-// --- 2. Speedometer Class Definition ---
+// --- 2. Data History Tracking (New Feature) ---
+let dbHistory = []; // Array to store {time: Date.now(), val: db}
+
+// --- 3. Speedometer Class Definition ---
 class Speedometer {
   constructor(canvasId, label) {
     this.canvas = document.getElementById(canvasId);
@@ -151,16 +153,16 @@ class Speedometer {
   }
 }
 
-// --- 3. Initialize Gauges & Theme ---
+// --- 4. Initialize Components ---
 const totalNoiseGauge = new Speedometer("speedometer-left", "Total Noise");
-const carHornGauge = new Speedometer("speedometer-right", "Car Horn");
-
 const themeToggle = document.getElementById("theme-toggle");
-const moonIcon = themeToggle.querySelector('[data-lucide="moon"]');
-const sunIcon = themeToggle.querySelector('[data-lucide="sun"]');
+const timeWindowSelect = document.getElementById("timeWindow");
+const aiStatusDiv = document.getElementById("ai-status");
 
 function setAppTheme(theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
+  const moonIcon = themeToggle.querySelector('[data-lucide="moon"]');
+  const sunIcon = themeToggle.querySelector('[data-lucide="sun"]');
   moonIcon.classList.toggle("hidden", theme === "dark");
   sunIcon.classList.toggle("hidden", theme !== "dark");
   localStorage.setItem("theme", theme);
@@ -171,23 +173,52 @@ themeToggle.addEventListener("click", () => {
   setAppTheme(isDark ? "light" : "dark");
 });
 
-// --- 4. Live Data Listener (Real-Time Singapore Sync) ---
+// --- 5. Live Data Listener & Analytics Logic ---
 onValue(noiseRef, (snapshot) => {
   const data = snapshot.val();
   if (data) {
-    // Total Noise (Left) updates with every change
-    totalNoiseGauge.setValue(data.db || 0);
+    const currentDb = data.db || 0;
+    const now = Date.now();
 
-    // Car Horn (Right) only moves if is_horn is true
-    if (data.is_horn === true) {
-      carHornGauge.setValue(data.db);
+    // Update Live Gauge
+    totalNoiseGauge.setValue(currentDb);
+
+    // Update AI Detection Status Badge
+    if (data.is_horn) {
+      aiStatusDiv.classList.replace("bg-muted", "bg-extreme");
+      aiStatusDiv.classList.replace("text-muted-foreground", "text-white");
+      aiStatusDiv.querySelector("span").innerText = "HORN DETECTED!";
     } else {
-      carHornGauge.setValue(0);
+      aiStatusDiv.classList.replace("bg-extreme", "bg-muted");
+      aiStatusDiv.classList.replace("text-white", "text-muted-foreground");
+      aiStatusDiv.querySelector("span").innerText = "No Horn Detected";
+    }
+
+    // Analytics Calculation
+    dbHistory.push({ time: now, val: currentDb });
+
+    const windowSeconds = parseInt(timeWindowSelect.value);
+    const windowLimit = now - windowSeconds * 1000;
+
+    // Keep memory clean (max 5 mins)
+    dbHistory = dbHistory.filter((p) => p.time > now - 300000);
+
+    // Filter for current window
+    const windowData = dbHistory.filter((p) => p.time > windowLimit);
+
+    if (windowData.length > 0) {
+      const vals = windowData.map((p) => p.val);
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const max = Math.max(...vals);
+      const min = Math.min(...vals);
+
+      document.getElementById("avgDb").innerText = avg.toFixed(1);
+      document.getElementById("maxDb").innerText = max.toFixed(1);
+      document.getElementById("minDb").innerText = min.toFixed(1);
     }
   }
 });
 
 // Initial Setup
-const savedTheme = localStorage.getItem("theme") || "light";
-setAppTheme(savedTheme);
+setAppTheme(localStorage.getItem("theme") || "light");
 lucide.createIcons();
