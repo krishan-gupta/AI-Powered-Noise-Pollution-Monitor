@@ -4,42 +4,47 @@ import {
   ref,
   onValue,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
 
-// --- 1. Firebase Configuration (Singapore Project) ---
+// --- 1. Firebase Configuration ---
 const firebaseConfig = {
   apiKey: "AIzaSyDUuwgY7-M7QUiP7lnSXC0QRZd8TtXOfKo",
   authDomain: "vit-noise-monitor-pro.firebaseapp.com",
   databaseURL:
     "https://vit-noise-monitor-pro-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "vit-noise-monitor-pro",
-  storageBucket: "vit-noise-monitor-pro.firebasestorage.app",
-  messagingSenderId: "59273261046",
-  appId: "1:59273261046:web:482f8cb91a5ed449cbe1d7",
-  measurementId: "G-N1KTSFQBB4",
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const noiseRef = ref(db, "live_data");
 
-// --- 2. Data History Tracking (New Feature) ---
-let dbHistory = []; // Array to store {time: Date.now(), val: db}
+// --- 2. Analytics, Email & Heartbeat Variables ---
+let dbHistory = [];
+let highNoiseStartTime = null;
+let lastEmailSentTime = 0;
+let lastDataTimestamp = 0; // Tracks the last time data arrived
 
-// --- 3. Speedometer Class Definition ---
+const NOISE_THRESHOLD = 60;
+const DURATION_REQUIRED = 5000;
+const EMAIL_COOLDOWN = 15000;
+
+// Initialize EmailJS
+emailjs.init("tPkfVATP_WR7Xz3y_NI2h");
+
+// --- 3. Speedometer Class ---
 class Speedometer {
-  constructor(canvasId, label) {
+  constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
-    this.label = label;
     this.max = 130;
     this.value = 0;
     this.currentValue = 0;
     this.animationFrame = null;
-
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext("2d");
-    this.centerX = this.canvas.width / 2;
-    this.centerY = this.canvas.height / 2;
-    this.radius = Math.min(this.centerX, this.centerY) - 20;
+    this.centerX = 150;
+    this.centerY = 150;
+    this.radius = 110;
 
     this.themeObserver = new MutationObserver(() => this.drawGauge());
     this.themeObserver.observe(document.documentElement, {
@@ -60,30 +65,15 @@ class Speedometer {
       this.currentValue += diff * 0.1;
       this.drawGauge();
       this.animationFrame = requestAnimationFrame(() => this.animate());
-    } else {
-      this.currentValue = this.value;
-      this.drawGauge();
     }
   }
 
   getComputedColor(variable) {
-    const style = getComputedStyle(document.documentElement);
-    const value = style.getPropertyValue(variable).trim();
-    return `hsl(${value})`;
-  }
-
-  getCategory(db) {
-    if (db <= 50)
-      return { text: "good", color: this.getComputedColor("--good") };
-    if (db <= 70)
-      return { text: "loud", color: this.getComputedColor("--loud") };
-    if (db <= 100)
-      return { text: "too loud", color: this.getComputedColor("--too-loud") };
-    return { text: "extreme", color: this.getComputedColor("--extreme") };
+    return `hsl(${getComputedStyle(document.documentElement).getPropertyValue(variable).trim()})`;
   }
 
   drawGauge() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.clearRect(0, 0, 300, 300);
     const zones = [
       { start: 0, end: 50, color: this.getComputedColor("--good") },
       { start: 50, end: 70, color: this.getComputedColor("--loud") },
@@ -91,134 +81,146 @@ class Speedometer {
       { start: 100, end: 130, color: this.getComputedColor("--extreme") },
     ];
 
-    zones.forEach((zone) => {
-      const startAngle =
-        Math.PI * 0.75 + (zone.start / this.max) * Math.PI * 1.5;
-      const endAngle = Math.PI * 0.75 + (zone.end / this.max) * Math.PI * 1.5;
-      this.ctx.strokeStyle = zone.color;
+    zones.forEach((z) => {
+      this.ctx.strokeStyle = z.color;
       this.ctx.lineWidth = 25;
       this.ctx.beginPath();
       this.ctx.arc(
-        this.centerX,
-        this.centerY,
-        this.radius,
-        startAngle,
-        endAngle,
+        150,
+        150,
+        110,
+        Math.PI * (0.75 + (z.start / 130) * 1.5),
+        Math.PI * (0.75 + (z.end / 130) * 1.5),
       );
       this.ctx.stroke();
     });
 
-    const gaugeText = this.getComputedColor("--gauge-text");
-    this.ctx.fillStyle = gaugeText;
-    this.ctx.font = "bold 12px system-ui";
-    this.ctx.textAlign = "center";
-
-    for (let i = 0; i <= this.max; i += 20) {
-      const angle = Math.PI * 0.75 + (i / this.max) * Math.PI * 1.5;
-      const textX = this.centerX + (this.radius - 40) * Math.cos(angle);
-      const textY = this.centerY + (this.radius - 40) * Math.sin(angle);
-      this.ctx.fillText(i.toString(), textX, textY);
-    }
-
-    const needleAngle =
-      Math.PI * 0.75 + (this.currentValue / this.max) * Math.PI * 1.5;
-    const category = this.getCategory(this.currentValue);
-    this.ctx.strokeStyle = category.color;
+    const angle = Math.PI * (0.75 + (this.currentValue / 130) * 1.5);
+    this.ctx.strokeStyle = this.getComputedColor("--foreground");
     this.ctx.lineWidth = 5;
     this.ctx.lineCap = "round";
     this.ctx.beginPath();
-    this.ctx.moveTo(this.centerX, this.centerY);
-    this.ctx.lineTo(
-      this.centerX + (this.radius - 30) * Math.cos(needleAngle),
-      this.centerY + (this.radius - 30) * Math.sin(needleAngle),
-    );
+    this.ctx.moveTo(150, 150);
+    this.ctx.lineTo(150 + 90 * Math.cos(angle), 150 + 90 * Math.sin(angle));
     this.ctx.stroke();
 
-    this.ctx.fillStyle = gaugeText;
+    this.ctx.fillStyle = this.getComputedColor("--foreground");
     this.ctx.font = "bold 28px system-ui";
-    this.ctx.fillText(
-      Math.round(this.currentValue).toString(),
-      this.centerX,
-      this.centerY + 50,
-    );
-    this.ctx.font = "14px system-ui";
-    this.ctx.fillText("dB", this.centerX, this.centerY + 70);
-    this.ctx.fillStyle = category.color;
-    this.ctx.font = "bold 16px system-ui";
-    this.ctx.fillText(
-      category.text.toUpperCase(),
-      this.centerX,
-      this.centerY + 95,
-    );
+    this.ctx.textAlign = "center";
+    this.ctx.fillText(Math.round(this.currentValue), 150, 200);
   }
 }
 
-// --- 4. Initialize Components ---
-const totalNoiseGauge = new Speedometer("speedometer-left", "Total Noise");
+// --- 4. Initialization ---
+const totalNoiseGauge = new Speedometer("speedometer-left");
 const themeToggle = document.getElementById("theme-toggle");
 const timeWindowSelect = document.getElementById("timeWindow");
 const aiStatusDiv = document.getElementById("ai-status");
+const sensorStatusDiv = document.getElementById("sensor-status"); // New element
 
-function setAppTheme(theme) {
-  document.documentElement.classList.toggle("dark", theme === "dark");
-  const moonIcon = themeToggle.querySelector('[data-lucide="moon"]');
-  const sunIcon = themeToggle.querySelector('[data-lucide="sun"]');
-  moonIcon.classList.toggle("hidden", theme === "dark");
-  sunIcon.classList.toggle("hidden", theme !== "dark");
-  localStorage.setItem("theme", theme);
+function triggerEmailAlert(avgDb) {
+  const params = { avg_db: avgDb.toFixed(1) };
+  emailjs
+    .send("service_s2s4yyc", "template_dihamwo", params)
+    .then(() => console.log("✅ Alert Email Sent!"))
+    .catch((err) => console.error("❌ Email Failed:", err));
 }
 
-themeToggle.addEventListener("click", () => {
-  const isDark = document.documentElement.classList.contains("dark");
-  setAppTheme(isDark ? "light" : "dark");
-});
+// Function to update the Sensor Status Badge
+function updateSensorStatus(isOnline) {
+  if (isOnline) {
+    sensorStatusDiv.classList.replace("bg-muted", "bg-green-600/20");
+    sensorStatusDiv.classList.replace(
+      "text-muted-foreground",
+      "text-green-500",
+    );
+    sensorStatusDiv.querySelector("span").innerText = "ESP32: LIVE";
+  } else {
+    sensorStatusDiv.classList.replace("bg-green-600/20", "bg-muted");
+    sensorStatusDiv.classList.replace(
+      "text-green-500",
+      "text-muted-foreground",
+    );
+    sensorStatusDiv.querySelector("span").innerText = "Sensor Offline";
+  }
+}
 
-// --- 5. Live Data Listener & Analytics Logic ---
+// --- 5. Live Listener ---
 onValue(noiseRef, (snapshot) => {
   const data = snapshot.val();
   if (data) {
+    lastDataTimestamp = Date.now(); // Mark time of arrival
+    updateSensorStatus(true); // Data arrived, so it's live
+
     const currentDb = data.db || 0;
     const now = Date.now();
-
-    // Update Live Gauge
     totalNoiseGauge.setValue(currentDb);
 
-    // Update AI Detection Status Badge
+    // AI Status Update
     if (data.is_horn) {
-      aiStatusDiv.classList.replace("bg-muted", "bg-extreme");
-      aiStatusDiv.classList.replace("text-muted-foreground", "text-white");
+      aiStatusDiv.className =
+        "flex items-center gap-2 px-4 py-2 rounded-full bg-red-600 text-white animate-pulse shadow-lg";
       aiStatusDiv.querySelector("span").innerText = "HORN DETECTED!";
     } else {
-      aiStatusDiv.classList.replace("bg-extreme", "bg-muted");
-      aiStatusDiv.classList.replace("text-white", "text-muted-foreground");
+      aiStatusDiv.className =
+        "flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground";
       aiStatusDiv.querySelector("span").innerText = "No Horn Detected";
     }
 
-    // Analytics Calculation
+    // Analytics Tracking
     dbHistory.push({ time: now, val: currentDb });
-
-    const windowSeconds = parseInt(timeWindowSelect.value);
-    const windowLimit = now - windowSeconds * 1000;
-
-    // Keep memory clean (max 5 mins)
     dbHistory = dbHistory.filter((p) => p.time > now - 300000);
 
-    // Filter for current window
+    const windowLimit = now - parseInt(timeWindowSelect.value) * 1000;
     const windowData = dbHistory.filter((p) => p.time > windowLimit);
 
     if (windowData.length > 0) {
       const vals = windowData.map((p) => p.val);
-      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-      const max = Math.max(...vals);
-      const min = Math.min(...vals);
+      document.getElementById("avgDb").innerText = (
+        vals.reduce((a, b) => a + b, 0) / vals.length
+      ).toFixed(1);
+      document.getElementById("maxDb").innerText = Math.max(...vals).toFixed(1);
+      document.getElementById("minDb").innerText = Math.min(...vals).toFixed(1);
+    }
 
-      document.getElementById("avgDb").innerText = avg.toFixed(1);
-      document.getElementById("maxDb").innerText = max.toFixed(1);
-      document.getElementById("minDb").innerText = min.toFixed(1);
+    // Email Alert Timer Logic
+    if (currentDb > NOISE_THRESHOLD) {
+      if (highNoiseStartTime === null) highNoiseStartTime = now;
+      else if (now - highNoiseStartTime >= DURATION_REQUIRED) {
+        if (now - lastEmailSentTime >= EMAIL_COOLDOWN) {
+          const recent = dbHistory
+            .filter((x) => x.time > now - 5000)
+            .map((x) => x.val);
+          const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+          triggerEmailAlert(avg);
+          lastEmailSentTime = now;
+          highNoiseStartTime = null;
+        }
+      }
+    } else {
+      highNoiseStartTime = null;
     }
   }
 });
 
-// Initial Setup
-setAppTheme(localStorage.getItem("theme") || "light");
+// Heartbeat interval: Check every 3 seconds if the sensor is still active
+setInterval(() => {
+  const isOnline = Date.now() - lastDataTimestamp < 5000; // Offline if no data for 5s
+  updateSensorStatus(isOnline);
+}, 3000);
+
+// Theme & Setup
+themeToggle.onclick = () => {
+  const isDark = document.documentElement.classList.toggle("dark");
+  localStorage.setItem("theme", isDark ? "dark" : "light");
+  themeToggle
+    .querySelector('[data-lucide="moon"]')
+    .classList.toggle("hidden", isDark);
+  themeToggle
+    .querySelector('[data-lucide="sun"]')
+    .classList.toggle("hidden", !isDark);
+};
+
+if (localStorage.getItem("theme") !== "light")
+  document.documentElement.classList.add("dark");
 lucide.createIcons();
